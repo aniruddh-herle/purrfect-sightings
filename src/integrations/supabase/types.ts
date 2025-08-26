@@ -14,7 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cat_sightings: {
+        Row: {
+          cat_id: string
+          id: string
+          latitude: number
+          longitude: number
+          notes: string | null
+          spotted_at: string
+          spotted_by: string
+        }
+        Insert: {
+          cat_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          notes?: string | null
+          spotted_at?: string
+          spotted_by: string
+        }
+        Update: {
+          cat_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          notes?: string | null
+          spotted_at?: string
+          spotted_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_sightings_cat_id_fkey"
+            columns: ["cat_id"]
+            isOneToOne: false
+            referencedRelation: "cats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cats: {
+        Row: {
+          ai_features: Json | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          ai_features?: Json | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          ai_features?: Json | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
