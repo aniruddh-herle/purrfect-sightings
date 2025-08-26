@@ -2,41 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Cat Spotter App - Beautiful design system inspired by feline warmth and urban exploration */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Cat-inspired warm color palette */
+    --background: 42 20% 98%;
+    --foreground: 25 15% 15%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 40 25% 96%;
+    --card-foreground: 25 15% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 40 25% 96%;
+    --popover-foreground: 25 15% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Orange tabby primary - warm and inviting */
+    --primary: 24 85% 55%;
+    --primary-foreground: 42 20% 98%;
+    --primary-glow: 24 85% 70%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Soft cream secondary */
+    --secondary: 42 35% 92%;
+    --secondary-foreground: 25 15% 25%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted gray-brown like cat fur */
+    --muted: 30 15% 88%;
+    --muted-foreground: 25 10% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - playful cat toy purple */
+    --accent: 280 65% 60%;
+    --accent-foreground: 42 20% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 75% 58%;
+    --destructive-foreground: 42 20% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 30 20% 85%;
+    --input: 30 20% 90%;
+    --ring: 24 85% 55%;
 
-    --radius: 0.5rem;
+    /* Beautiful gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(24 85% 55%), hsl(24 85% 70%));
+    --gradient-hero: linear-gradient(135deg, hsl(24 85% 55%), hsl(280 65% 60%));
+    --gradient-card: linear-gradient(180deg, hsl(42 25% 96%), hsl(42 20% 94%));
+    
+    /* Shadows with warm glow */
+    --shadow-warm: 0 8px 32px hsl(24 85% 55% / 0.15);
+    --shadow-card: 0 4px 16px hsl(25 15% 15% / 0.08);
+    
+    /* Smooth transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --radius: 1rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,33 +72,44 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Dark mode - cozy evening cat vibes */
+    --background: 25 20% 8%;
+    --foreground: 42 25% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 25 25% 12%;
+    --card-foreground: 42 25% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 25 25% 12%;
+    --popover-foreground: 42 25% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 24 85% 65%;
+    --primary-foreground: 25 20% 8%;
+    --primary-glow: 24 85% 75%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 25 15% 18%;
+    --secondary-foreground: 42 25% 90%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 25 10% 15%;
+    --muted-foreground: 30 8% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 280 65% 70%;
+    --accent-foreground: 25 20% 8%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 75% 65%;
+    --destructive-foreground: 25 20% 8%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 25 15% 20%;
+    --input: 25 15% 20%;
+    --ring: 24 85% 65%;
+    
+    /* Dark mode gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(24 85% 65%), hsl(24 85% 75%));
+    --gradient-hero: linear-gradient(135deg, hsl(24 85% 65%), hsl(280 65% 70%));
+    --gradient-card: linear-gradient(180deg, hsl(25 25% 12%), hsl(25 20% 10%));
+    
+    /* Dark shadows with warm glow */
+    --shadow-warm: 0 8px 32px hsl(24 85% 65% / 0.2);
+    --shadow-card: 0 4px 16px hsl(25 20% 8% / 0.3);
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
