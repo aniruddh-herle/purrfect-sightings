@@ -1,0 +1,237 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
+import { toast } from './use-toast';
+
+export interface Cat {
+  id: string;
+  name: string;
+  description?: string;
+  image_url?: string;
+  ai_features?: any;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CatSighting {
+  id: string;
+  cat_id: string;
+  latitude: number;
+  longitude: number;
+  spotted_by: string;
+  spotted_at: string;
+  notes?: string;
+  cats?: Cat;
+}
+
+export const useCats = () => {
+  const [cats, setCats] = useState<Cat[]>([]);
+  const [catSightings, setCatSightings] = useState<CatSighting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  const fetchCats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cats')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCats(data || []);
+    } catch (error) {
+      console.error('Error fetching cats:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load cats",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchCatSightings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cat_sightings')
+        .select(`
+          *,
+          cats (*)
+        `)
+        .order('spotted_at', { ascending: false });
+
+      if (error) throw error;
+      setCatSightings(data || []);
+    } catch (error) {
+      console.error('Error fetching cat sightings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load cat sightings",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const identifyCat = async (imageBase64: string, latitude: number, longitude: number) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('identify-cat', {
+        body: { imageBase64, latitude, longitude }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error identifying cat:', error);
+      toast({
+        title: "Error",
+        description: "Failed to identify cat",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const uploadCatImage = async (file: File, catId: string): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${catId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('cat-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('cat-images')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const createCat = async (name: string, imageFile: File, features: any, latitude: number, longitude: number) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      // First create the cat record
+      const { data: catData, error: catError } = await supabase
+        .from('cats')
+        .insert({
+          name,
+          ai_features: features,
+          created_by: user.id
+        })
+        .select()
+        .single();
+
+      if (catError) throw catError;
+
+      // Upload the image
+      const imageUrl = await uploadCatImage(imageFile, catData.id);
+      
+      if (imageUrl) {
+        // Update cat with image URL
+        const { error: updateError } = await supabase
+          .from('cats')
+          .update({ image_url: imageUrl })
+          .eq('id', catData.id);
+
+        if (updateError) throw updateError;
+      }
+
+      // Create the sighting
+      const { error: sightingError } = await supabase
+        .from('cat_sightings')
+        .insert({
+          cat_id: catData.id,
+          latitude,
+          longitude,
+          spotted_by: user.id
+        });
+
+      if (sightingError) throw sightingError;
+
+      // Refresh data
+      fetchCats();
+      fetchCatSightings();
+
+      toast({
+        title: "Cat added! 🎉",
+        description: `${name} has been spotted and added to the map.`,
+      });
+
+      return catData;
+    } catch (error) {
+      console.error('Error creating cat:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create cat profile",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const addSighting = async (catId: string, latitude: number, longitude: number, notes?: string) => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const { error } = await supabase
+        .from('cat_sightings')
+        .insert({
+          cat_id: catId,
+          latitude,
+          longitude,
+          spotted_by: user.id,
+          notes
+        });
+
+      if (error) throw error;
+
+      fetchCatSightings();
+
+      toast({
+        title: "New sighting added! 📍",
+        description: "Cat location has been updated.",
+      });
+    } catch (error) {
+      console.error('Error adding sighting:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add sighting",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    fetchCats();
+    fetchCatSightings();
+  }, []);
+
+  return {
+    cats,
+    catSightings,
+    loading,
+    identifyCat,
+    createCat,
+    addSighting,
+    uploadCatImage,
+    refreshData: () => {
+      fetchCats();
+      fetchCatSightings();
+    }
+  };
+};

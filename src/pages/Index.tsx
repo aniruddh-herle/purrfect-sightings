@@ -3,39 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapView } from "@/components/MapView";
 import { CatProfile } from "@/components/CatProfile";
-import { MapPin, Heart, Users, Camera } from "lucide-react";
+import { MapPin, Heart, Users, Camera, LogOut } from "lucide-react";
 import heroImage from "@/assets/hero-cat.jpg";
 import { toast } from "@/hooks/use-toast";
-
-interface CatSpot {
-  id: string;
-  lat: number;
-  lng: number;
-  name: string;
-  image?: string;
-  timestamp: Date;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { useCats } from "@/hooks/useCats";
 
 const Index = () => {
-  const [catSpots, setCatSpots] = useState<CatSpot[]>([
-    {
-      id: "1",
-      lat: 40.7128,
-      lng: -74.0060,
-      name: "Whiskers",
-      image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400",
-      timestamp: new Date(Date.now() - 86400000) // Yesterday
-    },
-    {
-      id: "2", 
-      lat: 40.7130,
-      lng: -74.0058,
-      name: "Shadow",
-      image: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=400",
-      timestamp: new Date(Date.now() - 172800000) // 2 days ago
-    }
-  ]);
-  
+  const { user, signOut } = useAuth();
+  const { catSightings, loading } = useCats();
   const [showCatProfile, setShowCatProfile] = useState(false);
   const [newCatLocation, setNewCatLocation] = useState<{lat: number, lng: number} | null>(null);
   const [showMap, setShowMap] = useState(false);
@@ -45,26 +21,9 @@ const Index = () => {
     setShowCatProfile(true);
   };
 
-  const handleSaveCat = (name: string, image: string) => {
-    if (!newCatLocation) return;
-    
-    const newCat: CatSpot = {
-      id: Date.now().toString(),
-      lat: newCatLocation.lat,
-      lng: newCatLocation.lng,
-      name,
-      image,
-      timestamp: new Date()
-    };
-    
-    setCatSpots(prev => [...prev, newCat]);
+  const handleSaveCat = () => {
     setShowCatProfile(false);
     setNewCatLocation(null);
-    
-    toast({
-      title: "Cat added! 🎉",
-      description: `${name} has been spotted and added to the map.`
-    });
   };
 
   if (showMap) {
@@ -79,10 +38,16 @@ const Index = () => {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <h1 className="text-xl font-bold">Cat Spotter</h1>
+                <span className="text-sm text-muted-foreground">Welcome, {user?.email}</span>
               </div>
-              <Button variant="outline" onClick={() => setShowMap(false)}>
-                Back to Home
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setShowMap(false)}>
+                  Back to Home
+                </Button>
+                <Button variant="outline" size="sm" onClick={signOut}>
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
           
@@ -90,7 +55,8 @@ const Index = () => {
           <div className="flex-1 p-4">
             <MapView 
               onAddCat={handleAddCat}
-              catSpots={catSpots}
+              catSightings={catSightings}
+              loading={loading}
             />
           </div>
         </div>
@@ -211,8 +177,8 @@ const Index = () => {
         <div className="max-w-4xl mx-auto px-4 text-center">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
-              <div className="text-4xl font-bold text-primary mb-2">{catSpots.length}</div>
-              <div className="text-muted-foreground">Cats Spotted</div>
+              <div className="text-4xl font-bold text-primary mb-2">{catSightings.length}</div>
+              <div className="text-muted-foreground">Cat Sightings</div>
             </div>
             <div>
               <div className="text-4xl font-bold text-primary mb-2">1.2k+</div>

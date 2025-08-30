@@ -1,24 +1,17 @@
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Plus, Camera } from "lucide-react";
-
-interface CatSpot {
-  id: string;
-  lat: number;
-  lng: number;
-  name: string;
-  image?: string;
-  timestamp: Date;
-}
+import { CatSighting } from "@/hooks/useCats";
 
 interface MapViewProps {
   onAddCat: (lat: number, lng: number) => void;
-  catSpots: CatSpot[];
+  catSightings: CatSighting[];
+  loading: boolean;
 }
 
-export const MapView = ({ onAddCat, catSpots }: MapViewProps) => {
-  const [selectedSpot, setSelectedSpot] = useState<CatSpot | null>(null);
+export const MapView = ({ onAddCat, catSightings, loading }: MapViewProps) => {
+  const [selectedSighting, setSelectedSighting] = useState<CatSighting | null>(null);
 
   const handleMapClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -46,59 +39,88 @@ export const MapView = ({ onAddCat, catSpots }: MapViewProps) => {
           backgroundSize: '50px 50px'
         }}
       >
-        {/* Map pins for cat spots */}
-        {catSpots.map((spot) => (
-          <div
-            key={spot.id}
-            className="absolute transform -translate-x-1/2 -translate-y-full cursor-pointer"
-            style={{
-              left: `${50 + (spot.lng + 74.0060) * 100}%`,
-              top: `${50 + (spot.lat - 40.7128) * 100}%`
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedSpot(spot);
-            }}
-          >
-            <div className="bg-primary text-primary-foreground p-2 rounded-full shadow-warm hover:scale-110 transition-transform">
-              <MapPin className="w-4 h-4" />
-            </div>
+        {/* Loading indicator */}
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+            <div className="text-lg">Loading cats...</div>
           </div>
-        ))}
+        )}
+
+        {/* Cat sightings */}
+        {catSightings.map((sighting) => {
+          const x = ((sighting.longitude + 74.0060) * 1000) % 100;
+          const y = ((sighting.latitude - 40.7128) * 1000) % 100;
+          
+          return (
+            <div
+              key={sighting.id}
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+              style={{
+                left: `${Math.max(5, Math.min(95, x + 50))}%`,
+                top: `${Math.max(5, Math.min(95, 50 - y))}%`,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedSighting(sighting);
+              }}
+            >
+              <div className="bg-primary text-primary-foreground p-2 rounded-full shadow-lg hover:shadow-xl transition-shadow">
+                <MapPin className="w-4 h-4" />
+              </div>
+            </div>
+          );
+        })}
         
         {/* Floating add button */}
         <div className="absolute bottom-4 right-4">
-          <Button variant="fab" size="fab">
+          <Button variant="outline" size="icon" className="rounded-full shadow-lg">
             <Plus className="w-6 h-6" />
           </Button>
         </div>
         
         {/* Map controls */}
         <div className="absolute top-4 left-4 space-y-2">
-          <Button variant="map" size="icon">
+          <Button variant="outline" size="icon">
             <Camera className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      {/* Selected spot info */}
-      {selectedSpot && (
-        <Card className="absolute bottom-4 left-4 right-16 p-4 bg-card/95 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-card-foreground">{selectedSpot.name}</h3>
-              <p className="text-sm text-muted-foreground">
-                Spotted {selectedSpot.timestamp.toLocaleDateString()}
-              </p>
-            </div>
+      {/* Selected sighting details */}
+      {selectedSighting && (
+        <Card className="absolute top-4 right-4 w-64 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              {selectedSighting.cats?.name || 'Unknown Cat'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {selectedSighting.cats?.image_url && (
+              <img 
+                src={selectedSighting.cats.image_url} 
+                alt={selectedSighting.cats.name}
+                className="w-full h-32 object-cover rounded-md mb-3"
+              />
+            )}
+            <p className="text-sm text-muted-foreground mb-2">
+              Spotted {new Date(selectedSighting.spotted_at).toLocaleDateString()}
+            </p>
+            <p className="text-sm text-muted-foreground mb-2">
+              Location: {selectedSighting.latitude.toFixed(4)}, {selectedSighting.longitude.toFixed(4)}
+            </p>
+            {selectedSighting.notes && (
+              <p className="text-sm mb-2">{selectedSighting.notes}</p>
+            )}
             <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setSelectedSpot(null)}
+              variant="outline" 
+              size="sm" 
+              className="mt-2 w-full"
+              onClick={() => setSelectedSighting(null)}
             >
-              ×
+              Close
             </Button>
-          </div>
+          </CardContent>
         </Card>
       )}
     </div>
