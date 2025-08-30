@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, Upload, MapPin, AlertCircle, CheckCircle2, Shuffle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useCats } from "@/hooks/useCats";
+import { useCats, CatIdentificationResult } from "@/hooks/useCats";
 
 interface CatProfileProps {
   onSave: () => void;
@@ -26,7 +26,7 @@ export const CatProfile = ({ onSave, onCancel, location }: CatProfileProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [aiResult, setAiResult] = useState<any>(null);
+  const [aiResult, setAiResult] = useState<CatIdentificationResult | null>(null);
   const [showExistingCat, setShowExistingCat] = useState(false);
   
   const { identifyCat, createCat, addSighting } = useCats();

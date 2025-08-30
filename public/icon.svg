@@ -1,0 +1,6 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#3b82f6"/>
+  <circle cx="256" cy="256" r="200" fill="white"/>
+  <path d="M256 128C288 128 320 160 320 192C320 224 288 256 256 256C224 256 192 224 192 192C192 160 224 128 256 128ZM256 256C256 288 288 320 320 320C288 320 256 288 256 256C224 320 192 288 192 256C192 288 224 256 256 256" fill="#3b82f6"/>
+  <text x="256" y="400" text-anchor="middle" fill="#3b82f6" font-family="Arial, sans-serif" font-size="48" font-weight="bold">🐱</text>
+</svg>

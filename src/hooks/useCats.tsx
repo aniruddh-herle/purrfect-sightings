@@ -3,12 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from './use-toast';
 
+export interface CatFeatures {
+  breed?: string;
+  colors?: string[];
+  patterns?: string[];
+  [key: string]: unknown;
+}
+
 export interface Cat {
   id: string;
   name: string;
   description?: string;
   image_url?: string;
-  ai_features?: any;
+  ai_features?: CatFeatures;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -23,6 +30,13 @@ export interface CatSighting {
   spotted_at: string;
   notes?: string;
   cats?: Cat;
+}
+
+export interface CatIdentificationResult {
+  existing_cat?: Cat;
+  is_likely_same_cat?: boolean;
+  match_score?: number;
+  features?: CatFeatures;
 }
 
 export const useCats = () => {
@@ -74,14 +88,14 @@ export const useCats = () => {
     }
   };
 
-  const identifyCat = async (imageBase64: string, latitude: number, longitude: number) => {
+  const identifyCat = async (imageBase64: string, latitude: number, longitude: number): Promise<CatIdentificationResult | null> => {
     try {
       const { data, error } = await supabase.functions.invoke('identify-cat', {
         body: { imageBase64, latitude, longitude }
       });
 
       if (error) throw error;
-      return data;
+      return data as CatIdentificationResult;
     } catch (error) {
       console.error('Error identifying cat:', error);
       toast({
@@ -120,7 +134,7 @@ export const useCats = () => {
     }
   };
 
-  const createCat = async (name: string, imageFile: File, features: any, latitude: number, longitude: number) => {
+  const createCat = async (name: string, imageFile: File, features: CatFeatures, latitude: number, longitude: number) => {
     if (!user) throw new Error('User not authenticated');
 
     try {
