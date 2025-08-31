@@ -71,7 +71,7 @@ export const OfflineMap = ({ onAddCat, catSightings, loading, onRetryOnline }: O
     // But we can show the location
     toast({
       title: "Cat Location",
-      description: `${sighting.latitude.toFixed(4)}, ${sighting.lng.toFixed(4)}`,
+      description: `${sighting.latitude.toFixed(4)}, ${sighting.longitude.toFixed(4)}`,
     });
   }, []);
 
@@ -107,7 +107,7 @@ export const OfflineMap = ({ onAddCat, catSightings, loading, onRetryOnline }: O
             const centerLng = userLocation?.lng || -74.0060;
             
             const latDiff = sighting.latitude - centerLat;
-            const lngDiff = sighting.lng - centerLng;
+            const lngDiff = sighting.longitude - centerLng;
             
             const x = 50 + (lngDiff * 1000) % 100;
             const y = 50 - (latDiff * 1000) % 100;
@@ -139,7 +139,7 @@ export const OfflineMap = ({ onAddCat, catSightings, loading, onRetryOnline }: O
             </Button>
           </div>
           
-          {/* Map controls */}
+          {/* Map controls - only show user location button */}
           <div className="absolute top-4 left-4 space-y-2">
             <Button 
               variant="outline" 
@@ -148,13 +148,6 @@ export const OfflineMap = ({ onAddCat, catSightings, loading, onRetryOnline }: O
               title="Get my location"
             >
               <Locate className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              title="Navigation"
-            >
-              <Navigation className="w-4 h-4" />
             </Button>
           </div>
 
@@ -225,7 +218,7 @@ export const OfflineMap = ({ onAddCat, catSightings, loading, onRetryOnline }: O
               Spotted {new Date(selectedSighting.spotted_at).toLocaleDateString()}
             </p>
             <p className="text-sm text-muted-foreground mb-2">
-              Location: {selectedSighting.latitude.toFixed(4)}, {selectedSighting.lng.toFixed(4)}
+              Location: {selectedSighting.latitude.toFixed(4)}, {selectedSighting.longitude.toFixed(4)}
             </p>
             {selectedSighting.notes && (
               <p className="text-sm mb-2">{selectedSighting.notes}</p>

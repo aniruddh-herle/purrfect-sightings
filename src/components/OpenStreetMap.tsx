@@ -82,15 +82,7 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
         console.log('Map size invalidated');
       }, 100);
 
-      // Set a timeout for tile loading - this will trigger if tiles don't load within 15 seconds
-      const timeout = setTimeout(() => {
-        console.log('Map tile loading timeout - switching to offline mode');
-        setOfflineMode(true);
-      }, 15000); // 15 second timeout
-      
-      setTileLoadTimeout(timeout);
-
-      // Add tile layer with error handling
+      // Add tile layer with simplified error handling
       const tileLayer = L.tileLayer(
         OPENSTREETMAP_CONFIG.tileProviders[currentTileProvider].url,
         {
@@ -101,24 +93,14 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
 
       console.log('Tile layer added:', OPENSTREETMAP_CONFIG.tileProviders[currentTileProvider].url);
 
-      // Listen for tile loading events with better mobile detection
-      let tilesLoaded = 0;
-      let tilesTotal = 0;
+      // Simple tile loading detection
       let hasLoadedAnyTiles = false;
 
-      tileLayer.on('tileloadstart', () => {
-        tilesTotal++;
-        console.log(`Tile loading started: ${tilesTotal} total`);
-      });
-
       tileLayer.on('tileload', () => {
-        tilesLoaded++;
-        hasLoadedAnyTiles = true;
-        console.log(`Tile loaded: ${tilesLoaded}/${tilesTotal}`);
-        
-        // If we've loaded at least 2 tiles, consider the map loaded (reduced for mobile)
-        if (tilesLoaded >= 2) {
-          console.log('Map tiles loaded successfully, clearing timeout');
+        if (!hasLoadedAnyTiles) {
+          hasLoadedAnyTiles = true;
+          console.log('First tile loaded successfully');
+          // Clear any loading timeouts since tiles are working
           if (tileLoadTimeout) {
             clearTimeout(tileLoadTimeout);
             setTileLoadTimeout(null);
@@ -128,20 +110,17 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
 
       tileLayer.on('tileerror', (error) => {
         console.error('Tile loading error:', error);
-        // Check if we're getting any tiles at all
-        if (!hasLoadedAnyTiles && tilesTotal > 0) {
-          console.log('No tiles loaded successfully, switching to offline mode');
-          setOfflineMode(true);
-        }
       });
 
-      // Add a fallback check for mobile devices
-      const mobileCheckTimeout = setTimeout(() => {
+      // Set a reasonable timeout for tile loading
+      const timeout = setTimeout(() => {
         if (!hasLoadedAnyTiles) {
-          console.log('Mobile device tile loading check - no tiles loaded, switching to offline mode');
-          setOfflineMode(true);
+          console.log('Map tiles taking too long to load - this is normal, map should still work');
+          // Don't automatically switch to offline mode, just log the delay
         }
-      }, isMobile ? 8000 : 15000); // Faster check for mobile
+      }, 10000); // 10 second timeout just for logging
+      
+      setTileLoadTimeout(timeout);
 
       // Add click listener for placing pins
       map.on('click', (event: L.LeafletMouseEvent) => {
@@ -457,7 +436,7 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
         </div>
       )}
 
-      {/* Map controls */}
+      {/* Map controls - only show user location button */}
       <div className="absolute top-4 left-4 space-y-2">
         <Button 
           variant="outline" 
@@ -468,14 +447,6 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
           title="Center on my location"
         >
           <Locate className="w-4 h-4" />
-        </Button>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="shadow-lg bg-background/90 backdrop-blur-sm"
-          title="Navigation"
-        >
-          <Navigation className="w-4 h-4" />
         </Button>
       </div>
 

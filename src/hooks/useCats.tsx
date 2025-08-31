@@ -53,7 +53,7 @@ export const useCats = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCats(data || []);
+      setCats((data || []) as Cat[]);
     } catch (error) {
       console.error('Error fetching cats:', error);
       toast({
@@ -75,7 +75,7 @@ export const useCats = () => {
         .order('spotted_at', { ascending: false });
 
       if (error) throw error;
-      setCatSightings(data || []);
+      setCatSightings((data || []) as CatSighting[]);
     } catch (error) {
       console.error('Error fetching cat sightings:', error);
       toast({
@@ -143,7 +143,7 @@ export const useCats = () => {
         .from('cats')
         .insert({
           name,
-          ai_features: features,
+          ai_features: features as any,
           created_by: user.id
         })
         .select()
@@ -181,7 +181,7 @@ export const useCats = () => {
       fetchCatSightings();
 
       toast({
-        title: "Cat added! 🎉",
+        title: "Success! 🐱",
         description: `${name} has been spotted and added to the map.`,
       });
 
@@ -216,8 +216,8 @@ export const useCats = () => {
       fetchCatSightings();
 
       toast({
-        title: "New sighting added! 📍",
-        description: "Cat location has been updated.",
+        title: "Sighting added! 📍",
+        description: "Cat location has been updated successfully.",
       });
     } catch (error) {
       console.error('Error adding sighting:', error);
