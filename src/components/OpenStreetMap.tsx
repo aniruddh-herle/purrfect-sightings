@@ -36,6 +36,8 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
     if (!mapRef.current || mapInstanceRef.current) return;
 
     try {
+      console.log('Initializing map...');
+      
       // Create map with very basic configuration
       const map = L.map(mapRef.current, {
         center: [40.7128, -74.0060], // NYC as default
@@ -44,11 +46,28 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
         attributionControl: true,
       });
 
-      // Add OpenStreetMap tiles - use the most reliable source
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      console.log('Map instance created');
+
+      // Add OpenStreetMap tiles
+      const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19,
-      }).addTo(map);
+      });
+
+      tileLayer.on('loading', () => {
+        console.log('Tiles loading...');
+      });
+
+      tileLayer.on('load', () => {
+        console.log('Tiles loaded successfully');
+        setMapLoaded(true);
+      });
+
+      tileLayer.on('tileerror', (error) => {
+        console.error('Tile loading error:', error);
+      });
+
+      tileLayer.addTo(map);
 
       mapInstanceRef.current = map;
 
@@ -70,18 +89,31 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
             
             // Center map on user location
             map.setView([userLatLng.lat, userLatLng.lng], 15);
+            console.log('User location set:', userLatLng);
           },
           (error) => {
             console.log('Geolocation error:', error);
-            // Keep default location
+            // Keep default location and still set map as loaded
+            setMapLoaded(true);
           }
         );
+      } else {
+        // No geolocation available, still mark as loaded
+        setMapLoaded(true);
       }
 
-      setMapLoaded(true);
+      // Fallback: mark as loaded after 3 seconds even if tiles haven't confirmed loading
+      setTimeout(() => {
+        if (!mapLoaded) {
+          console.log('Fallback: marking map as loaded');
+          setMapLoaded(true);
+        }
+      }, 3000);
+
     } catch (error) {
       console.error('Failed to initialize map:', error);
       setMapError('Failed to load the map. Please refresh the page.');
+      setMapLoaded(true); // Set to true so error message shows
     }
   }, [onAddCat]);
 
