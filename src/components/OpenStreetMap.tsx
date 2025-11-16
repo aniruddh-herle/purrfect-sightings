@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Plus, Locate, AlertCircle } from 'lucide-react';
+import { MapPin, Plus, Locate, AlertCircle, X } from 'lucide-react';
 import { CatSighting } from '@/hooks/useCats';
 import L from 'leaflet';
-
-// Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet default icon issue
+// Fix Leaflet default icon issue with webpack/vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -22,63 +20,109 @@ interface OpenStreetMapProps {
   loading: boolean;
 }
 
+/**
+ * CatMapView Component
+ * 
+ * A robust OpenStreetMap integration using Leaflet for the Cat Spotter app.
+ * Allows users to view existing cat sightings and place new pins to add cats.
+ * 
+ * Features:
+ * - Displays all cat sightings as interactive markers
+ * - Allows users to click/tap anywhere to add new cat sightings
+ * - Centers on user's location if permission granted
+ * - Mobile-friendly with touch event support
+ * - Comprehensive error handling and loading states
+ */
 export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMapProps) => {
+  // Refs for map instance and markers
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  
+  // Component state
   const [selectedSighting, setSelectedSighting] = useState<CatSighting | null>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
-  // Initialize map
+  /**
+   * Initialize the map instance
+   * This runs once when the component mounts
+   */
   useEffect(() => {
+    // Prevent re-initialization
     if (!mapRef.current || mapInstanceRef.current) return;
 
+    console.log('[Map] Starting initialization...');
+    setIsInitializing(true);
+
     try {
-      console.log('Initializing map...');
+      // Default center (New York City) - will be overridden if geolocation works
+      const defaultCenter: [number, number] = [40.7128, -74.0060];
       
-      // Create map with very basic configuration
+      // Create the Leaflet map instance
       const map = L.map(mapRef.current, {
-        center: [40.7128, -74.0060], // NYC as default
+        center: defaultCenter,
         zoom: 13,
         zoomControl: true,
         attributionControl: true,
-      });
-
-      console.log('Map instance created');
-
-      // Add OpenStreetMap tiles
-      const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+        minZoom: 3,
         maxZoom: 19,
       });
 
+      console.log('[Map] Map instance created');
+
+      // Add OpenStreetMap tile layer
+      const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+        minZoom: 3,
+      });
+
+      // Track tile loading
+      let tilesLoaded = false;
+      let loadTimeout: NodeJS.Timeout;
+
       tileLayer.on('loading', () => {
-        console.log('Tiles loading...');
+        console.log('[Map] Tiles loading...');
       });
 
       tileLayer.on('load', () => {
-        console.log('Tiles loaded successfully');
-        setMapLoaded(true);
+        console.log('[Map] Tiles loaded successfully');
+        tilesLoaded = true;
+        clearTimeout(loadTimeout);
+        setMapReady(true);
+        setIsInitializing(false);
       });
 
       tileLayer.on('tileerror', (error) => {
-        console.error('Tile loading error:', error);
+        console.error('[Map] Tile loading error:', error);
       });
 
+      // Add tiles to map
       tileLayer.addTo(map);
 
+      // Store map instance
       mapInstanceRef.current = map;
 
-      // Add click listener for placing pins
+      /**
+       * Handle map clicks to add new cat sightings
+       * Works for both mouse clicks and touch events on mobile
+       */
       map.on('click', (event: L.LeafletMouseEvent) => {
         const { lat, lng } = event.latlng;
+        console.log('[Map] Click detected at:', lat, lng);
         onAddCat(lat, lng);
       });
 
-      // Get user location
+      /**
+       * Attempt to get user's current location
+       * If successful, center the map on their location
+       * If denied or unavailable, keep the default center
+       */
       if (navigator.geolocation) {
+        console.log('[Map] Requesting geolocation...');
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const userLatLng = {
@@ -86,45 +130,60 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
               lng: position.coords.longitude,
             };
             setUserLocation(userLatLng);
-            
-            // Center map on user location
             map.setView([userLatLng.lat, userLatLng.lng], 15);
-            console.log('User location set:', userLatLng);
+            console.log('[Map] Centered on user location:', userLatLng);
           },
           (error) => {
-            console.log('Geolocation error:', error);
-            // Keep default location and still set map as loaded
-            setMapLoaded(true);
+            console.log('[Map] Geolocation denied or unavailable:', error.message);
+            // Map stays at default location
           }
         );
-      } else {
-        // No geolocation available, still mark as loaded
-        setMapLoaded(true);
       }
 
-      // Fallback: mark as loaded after 3 seconds even if tiles haven't confirmed loading
-      setTimeout(() => {
-        if (!mapLoaded) {
-          console.log('Fallback: marking map as loaded');
-          setMapLoaded(true);
+      // Fallback: mark as loaded after 2 seconds even if tile load event doesn't fire
+      loadTimeout = setTimeout(() => {
+        if (!tilesLoaded) {
+          console.log('[Map] Fallback timeout - marking map as ready');
+          setMapReady(true);
+          setIsInitializing(false);
         }
-      }, 3000);
+      }, 2000);
+
+      // Force map to recalculate its size after a brief delay
+      // This fixes rendering issues in some scenarios
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
 
     } catch (error) {
-      console.error('Failed to initialize map:', error);
-      setMapError('Failed to load the map. Please refresh the page.');
-      setMapLoaded(true); // Set to true so error message shows
+      console.error('[Map] Initialization error:', error);
+      setMapError('Failed to initialize the map. Please refresh the page.');
+      setIsInitializing(false);
     }
+
+    // Cleanup function
+    return () => {
+      if (mapInstanceRef.current) {
+        console.log('[Map] Cleaning up map instance');
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
   }, [onAddCat]);
 
-  // Update markers when cat sightings change
+  /**
+   * Update markers whenever cat sightings change
+   * This adds/removes markers to reflect the current data
+   */
   useEffect(() => {
-    if (!mapInstanceRef.current || !mapLoaded) return;
+    if (!mapInstanceRef.current || !mapReady) return;
 
     const map = mapInstanceRef.current;
     const markers = markersRef.current;
 
-    // Clear existing markers
+    console.log('[Map] Updating markers, count:', catSightings.length);
+
+    // Remove all existing markers
     markers.forEach(marker => marker.remove());
     markers.clear();
 
@@ -132,47 +191,55 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
     catSightings.forEach((sighting) => {
       const marker = L.marker([sighting.latitude, sighting.longitude], {
         title: sighting.cats?.name || 'Unknown Cat',
+        alt: `Cat sighting: ${sighting.cats?.name || 'Unknown'}`,
       }).addTo(map);
 
-      // Add click listener to marker
+      // Show sighting details when marker is clicked
       marker.on('click', () => {
+        console.log('[Map] Marker clicked:', sighting.cats?.name);
         setSelectedSighting(sighting);
       });
 
       // Store marker reference
       markers.set(sighting.id, marker);
     });
-  }, [catSightings, mapLoaded]);
+  }, [catSightings, mapReady]);
 
-  // Center map on user location
+  /**
+   * Center map on user's current location
+   */
   const centerOnUserLocation = useCallback(() => {
     if (mapInstanceRef.current && userLocation) {
       mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 15);
+      console.log('[Map] Centered on user location');
     }
   }, [userLocation]);
 
-  // Center map on selected sighting
+  /**
+   * Center map on a specific sighting
+   */
   const centerOnSighting = useCallback((sighting: CatSighting) => {
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setView([sighting.latitude, sighting.longitude], 16);
+      console.log('[Map] Centered on sighting:', sighting.cats?.name);
     }
   }, []);
 
-  // Show error state
+  /**
+   * Render error state if map failed to initialize
+   */
   if (mapError) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-muted rounded-lg">
-        <Card className="max-w-md text-center">
+      <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-lg">
+        <Card className="max-w-md text-center shadow-lg">
           <CardHeader>
-            <div className="bg-destructive text-destructive-foreground w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-destructive/10 text-destructive w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8" />
             </div>
-            <CardTitle className="text-destructive">Map Loading Error</CardTitle>
+            <CardTitle className="text-destructive">Map Error</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-4">
-              {mapError}
-            </p>
+            <p className="text-muted-foreground mb-4">{mapError}</p>
             <Button 
               onClick={() => window.location.reload()} 
               variant="outline"
@@ -185,114 +252,155 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
     );
   }
 
-  // Show loading state
-  if (!mapLoaded) {
+  /**
+   * Render loading state while map initializes
+   */
+  if (isInitializing) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-muted rounded-lg">
+      <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-lg">
         <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading map...</p>
+          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-lg font-medium">Loading map...</p>
+          <p className="text-sm text-muted-foreground mt-2">This should only take a moment</p>
         </div>
       </div>
     );
   }
 
+  /**
+   * Main map render
+   */
   return (
     <div className="relative w-full h-full">
-      {/* OpenStreetMap container */}
+      {/* Map container - Leaflet renders here */}
       <div 
         ref={mapRef} 
-        className="w-full h-full rounded-lg"
+        className="w-full h-full rounded-lg shadow-md"
+        style={{ minHeight: '400px' }}
       />
 
-      {/* Loading indicator overlay */}
+      {/* Data loading overlay */}
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-          <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <div className="text-lg">Loading cats...</div>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-lg pointer-events-none">
+          <div className="bg-card p-4 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin w-6 h-6 border-3 border-primary border-t-transparent rounded-full"></div>
+              <span className="text-sm font-medium">Loading cat sightings...</span>
+            </div>
           </div>
         </div>
       )}
 
       {/* Map controls */}
-      <div className="absolute top-4 left-4 space-y-2">
+      <div className="absolute top-4 left-4 flex flex-col gap-2">
+        {/* Center on user location button */}
         <Button 
           variant="outline" 
           size="icon" 
-          className="shadow-lg bg-background/90 backdrop-blur-sm"
+          className="shadow-lg bg-card hover:bg-accent"
           onClick={centerOnUserLocation}
           disabled={!userLocation}
-          title="Center on my location"
+          title={userLocation ? "Center on my location" : "Location not available"}
         >
           <Locate className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* Floating add button */}
-      <div className="absolute bottom-4 right-4">
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="rounded-full shadow-lg bg-background/90 backdrop-blur-sm"
-          title="Click on map to add cat"
-        >
-          <Plus className="w-6 h-6" />
-        </Button>
-      </div>
-
-      {/* Instructions */}
+      {/* Instructions card */}
       <div className="absolute top-4 right-4 max-w-xs">
-        <Card className="shadow-lg bg-background/90 backdrop-blur-sm">
-          <CardHeader className="pb-2">
+        <Card className="shadow-lg bg-card/95 backdrop-blur-sm border-border">
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
+              <MapPin className="w-4 h-4 text-primary" />
               How to use
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <p className="text-xs text-muted-foreground">
-              Click anywhere on the map to place a pin and add a cat sighting. 
-              Click on existing markers to view cat details.
-            </p>
+          <CardContent className="pt-0 text-xs text-muted-foreground space-y-1">
+            <p>• <strong>Click/tap</strong> anywhere on the map to add a cat sighting</p>
+            <p>• <strong>Click markers</strong> to view existing cat details</p>
+            <p>• <strong>Pan and zoom</strong> to explore different areas</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Selected sighting details */}
+      {/* Floating add button indicator */}
+      <div className="absolute bottom-4 right-4">
+        <div className="relative">
+          <Button 
+            variant="default" 
+            size="icon" 
+            className="rounded-full shadow-lg w-14 h-14 bg-primary hover:bg-primary/90"
+            title="Click on map to add cat"
+            disabled
+          >
+            <Plus className="w-6 h-6" />
+          </Button>
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+        </div>
+      </div>
+
+      {/* Selected sighting details panel */}
       {selectedSighting && (
-        <Card className="absolute bottom-4 left-4 w-64 shadow-lg bg-background/95 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <MapPin className="w-5 h-5" />
-              {selectedSighting.cats?.name || 'Unknown Cat'}
-            </CardTitle>
+        <Card className="absolute bottom-4 left-4 w-80 max-w-[calc(100vw-2rem)] shadow-2xl bg-card/98 backdrop-blur-sm border-border">
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MapPin className="w-5 h-5 text-primary flex-shrink-0" />
+                <span className="line-clamp-1">{selectedSighting.cats?.name || 'Unknown Cat'}</span>
+              </CardTitle>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-8 w-8 -mt-1 -mr-2"
+                onClick={() => setSelectedSighting(null)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 space-y-3">
+            {/* Cat image */}
             {selectedSighting.cats?.image_url && (
               <img 
                 src={selectedSighting.cats.image_url} 
                 alt={selectedSighting.cats.name}
-                className="w-full h-32 object-cover rounded-md mb-3"
+                className="w-full h-40 object-cover rounded-md"
               />
             )}
-            <p className="text-sm text-muted-foreground mb-2">
-              Spotted {new Date(selectedSighting.spotted_at).toLocaleDateString()}
-            </p>
-            <p className="text-sm text-muted-foreground mb-2">
-              Location: {selectedSighting.latitude.toFixed(4)}, {selectedSighting.longitude.toFixed(4)}
-            </p>
-            {selectedSighting.notes && (
-              <p className="text-sm mb-2">{selectedSighting.notes}</p>
-            )}
-            <div className="flex gap-2">
+            
+            {/* Sighting details */}
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Spotted:</span>
+                <span className="font-medium">
+                  {new Date(selectedSighting.spotted_at).toLocaleDateString()}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Location:</span>
+                <span className="font-mono text-xs">
+                  {selectedSighting.latitude.toFixed(4)}, {selectedSighting.longitude.toFixed(4)}
+                </span>
+              </div>
+
+              {selectedSighting.notes && (
+                <div className="pt-2 border-t border-border">
+                  <p className="text-muted-foreground text-xs mb-1">Notes:</p>
+                  <p className="text-sm">{selectedSighting.notes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2 pt-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="flex-1"
                 onClick={() => centerOnSighting(selectedSighting)}
               >
-                Center
+                Center Map
               </Button>
               <Button 
                 variant="outline" 

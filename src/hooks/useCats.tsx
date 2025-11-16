@@ -181,8 +181,9 @@ export const useCats = () => {
       fetchCatSightings();
 
       toast({
-        title: "Success! 🐱",
+        title: "Cat Added Successfully! 🐱",
         description: `${name} has been spotted and added to the map.`,
+        variant: "default",
       });
 
       return catData;
