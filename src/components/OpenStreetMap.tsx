@@ -6,12 +6,39 @@ import { CatSighting } from '@/hooks/useCats';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet default icon issue with webpack/vite
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+// Create a custom cat marker icon using inline SVG (no external dependencies)
+const catMarkerSvg = `
+  <svg width="32" height="40" viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
+    <g>
+      <!-- Shadow -->
+      <ellipse cx="16" cy="37" rx="10" ry="3" fill="rgba(0,0,0,0.3)"/>
+      <!-- Pin body -->
+      <path d="M16 2 C8 2 2 8 2 16 C2 24 16 38 16 38 C16 38 30 24 30 16 C30 8 24 2 16 2 Z" 
+            fill="hsl(var(--primary))" stroke="white" stroke-width="2"/>
+      <!-- Cat face -->
+      <circle cx="16" cy="14" r="8" fill="white"/>
+      <!-- Ears -->
+      <path d="M10 8 L8 6 L12 10 Z" fill="white"/>
+      <path d="M22 8 L24 6 L20 10 Z" fill="white"/>
+      <!-- Eyes -->
+      <circle cx="13" cy="13" r="1.5" fill="black"/>
+      <circle cx="19" cy="13" r="1.5" fill="black"/>
+      <!-- Nose -->
+      <path d="M16 15 L15 16 L17 16 Z" fill="pink"/>
+      <!-- Whiskers -->
+      <line x1="10" y1="15" x2="6" y2="15" stroke="black" stroke-width="0.5"/>
+      <line x1="10" y1="16" x2="6" y2="17" stroke="black" stroke-width="0.5"/>
+      <line x1="22" y1="15" x2="26" y2="15" stroke="black" stroke-width="0.5"/>
+      <line x1="22" y1="16" x2="26" y2="17" stroke="black" stroke-width="0.5"/>
+    </g>
+  </svg>
+`;
+
+const catIcon = L.icon({
+  iconUrl: `data:image/svg+xml;base64,${btoa(catMarkerSvg)}`,
+  iconSize: [32, 40],
+  iconAnchor: [16, 40],
+  popupAnchor: [0, -40],
 });
 
 interface OpenStreetMapProps {
@@ -187,9 +214,11 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
     markers.forEach(marker => marker.remove());
     markers.clear();
 
-    // Add new markers for each cat sighting
+    // Add new markers for each cat sighting with custom icon
     catSightings.forEach((sighting) => {
+      console.log('[Map] Adding marker for:', sighting.cats?.name, 'at', sighting.latitude, sighting.longitude);
       const marker = L.marker([sighting.latitude, sighting.longitude], {
+        icon: catIcon,
         title: sighting.cats?.name || 'Unknown Cat',
         alt: `Cat sighting: ${sighting.cats?.name || 'Unknown'}`,
       }).addTo(map);
