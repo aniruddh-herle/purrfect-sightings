@@ -253,19 +253,8 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
   }
 
   /**
-   * Render loading state while map initializes
+   * Render loading state while map initializes - now as overlay instead of early return
    */
-  if (isInitializing) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-lg">
-        <div className="text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-lg font-medium">Loading map...</p>
-          <p className="text-sm text-muted-foreground mt-2">This should only take a moment</p>
-        </div>
-      </div>
-    );
-  }
 
   /**
    * Main map render
@@ -279,8 +268,19 @@ export const OpenStreetMap = ({ onAddCat, catSightings, loading }: OpenStreetMap
         style={{ minHeight: '400px' }}
       />
 
+      {/* Map initialization loading overlay */}
+      {isInitializing && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm rounded-lg z-50">
+          <div className="text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-lg font-medium">Loading map...</p>
+            <p className="text-sm text-muted-foreground mt-2">This should only take a moment</p>
+          </div>
+        </div>
+      )}
+
       {/* Data loading overlay */}
-      {loading && (
+      {loading && !isInitializing && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-lg pointer-events-none">
           <div className="bg-card p-4 rounded-lg shadow-lg">
             <div className="flex items-center gap-3">
