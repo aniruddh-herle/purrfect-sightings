@@ -1,1 +1,4 @@
 project_id = "mmvbnbdquouifyavaixn"
+
+[functions.identify-cat]
+verify_jwt = false

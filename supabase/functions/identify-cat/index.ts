@@ -2,72 +2,134 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
+const BUILD_TIMESTAMP = "2025-01-21T19:55:00Z";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
+  console.log('=== IDENTIFY-CAT FUNCTION START ===');
+  console.log('Build timestamp:', BUILD_TIMESTAMP);
+  console.log('Request method:', req.method);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { imageBase64, latitude, longitude } = await req.json();
+    console.log('Request received with image size:', imageBase64?.length || 0, 'bytes');
     
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    // STEP 1: Comprehensive environment diagnostics
+    console.log('=== ENVIRONMENT DIAGNOSTICS ===');
+    const allEnvKeys = Object.keys(Deno.env.toObject());
+    console.log('Available environment variables:', allEnvKeys);
+    
+    // Try multiple possible key names
+    const possibleKeyNames = [
+      'OPENAI_API_KEY',
+      'OPENAI_APIKEY', 
+      'OPENAI_KEY',
+      'openai_api_key',
+      'OPENAI_API_KEY_PROD'
+    ];
+    
+    let openAIApiKey = null;
+    let foundKeyName = null;
+    
+    for (const keyName of possibleKeyNames) {
+      const testKey = Deno.env.get(keyName);
+      if (testKey) {
+        openAIApiKey = testKey;
+        foundKeyName = keyName;
+        console.log(`✓ Found API key under name: ${keyName}`);
+        console.log(`✓ Key starts with: ${testKey.substring(0, 7)}...`);
+        console.log(`✓ Key length: ${testKey.length} characters`);
+        break;
+      }
+    }
+    
     if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+      console.error('✗ NO API KEY FOUND under any tested names:', possibleKeyNames);
+      console.error('Available env keys:', allEnvKeys);
+      throw new Error('OpenAI API key not configured - checked all variants');
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    console.log('=== CALLING OPENAI API ===');
     console.log('Analyzing cat image with OpenAI Vision API...');
+    console.log('Using API key:', foundKeyName);
+    console.log('Model: gpt-4o');
 
     // Use OpenAI Vision API to extract cat features
+    const requestBody = {
+      model: 'gpt-4o',
+      max_tokens: 500,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analyze this cat image and extract identifying features. Return a JSON object with these fields:
+              - breed: estimated breed
+              - colors: array of primary colors
+              - patterns: array of patterns (solid, tabby, calico, etc.)
+              - distinctive_features: array of unique features (white paws, facial markings, etc.)
+              - estimated_age: young/adult/senior
+              - size: small/medium/large
+              - similarity_score: a number from 0-100 indicating how distinctive/identifiable this cat is
+
+              Only return the JSON object, no other text.`
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`
+              }
+            }
+          ]
+        }
+      ]
+    };
+
+    console.log('Request payload prepared (without image data)');
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        max_tokens: 500,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Analyze this cat image and extract identifying features. Return a JSON object with these fields:
-                - breed: estimated breed
-                - colors: array of primary colors
-                - patterns: array of patterns (solid, tabby, calico, etc.)
-                - distinctive_features: array of unique features (white paws, facial markings, etc.)
-                - estimated_age: young/adult/senior
-                - size: small/medium/large
-                - similarity_score: a number from 0-100 indicating how distinctive/identifiable this cat is
-
-                Only return the JSON object, no other text.`
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/jpeg;base64,${imageBase64}`
-                }
-              }
-            ]
-          }
-        ]
-      }),
+      body: JSON.stringify(requestBody),
     });
 
+    console.log('OpenAI response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('=== OPENAI API ERROR ===');
+      console.error('Status:', response.status);
+      console.error('Status text:', response.statusText);
+      console.error('Error body:', errorText);
+      console.error('Headers:', JSON.stringify(Object.fromEntries(response.headers.entries())));
+      
+      // Try to parse error details
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('Parsed error:', JSON.stringify(errorJson, null, 2));
+        throw new Error(`OpenAI API error (${response.status}): ${errorJson.error?.message || errorText}`);
+      } catch (parseErr) {
+        throw new Error(`OpenAI API error (${response.status}): ${errorText}`);
+      }
     }
+
+    console.log('✓ OpenAI API call successful');
 
     const aiResult = await response.json();
     let features;
@@ -156,13 +218,21 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in identify-cat function:', error);
+    console.error('=== ERROR IN IDENTIFY-CAT FUNCTION ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
     return new Response(JSON.stringify({ 
       error: error.message || 'An unexpected error occurred',
       features: null,
       existing_cat: null,
       match_score: 0,
-      is_likely_same_cat: false
+      is_likely_same_cat: false,
+      debug_info: {
+        build: BUILD_TIMESTAMP,
+        error_type: error.constructor.name
+      }
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
