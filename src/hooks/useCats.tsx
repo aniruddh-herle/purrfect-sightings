@@ -91,43 +91,31 @@ export const useCats = () => {
   };
 
   const identifyCat = async (imageBase64: string, latitude: number, longitude: number): Promise<CatIdentificationResult | null> => {
-    console.log('🚀 STEP 5: identifyCat function ENTERED');
-    console.log('🚀 STEP 5.1: Image base64 size:', imageBase64?.length || 0, 'characters');
-    console.log('🚀 STEP 5.2: Latitude:', latitude);
-    console.log('🚀 STEP 5.3: Longitude:', longitude);
-    console.log('🚀 STEP 5.4: Supabase client exists:', !!supabase);
-    console.log('🚀 STEP 5.5: Supabase.functions exists:', !!supabase.functions);
+    console.log('🚀🚀🚀 IDENTIFY-CAT FLOW REACHED - CALLING EDGE FUNCTION');
+    console.log('📍 Location:', { latitude, longitude });
+    console.log('🖼️ Image base64 length:', imageBase64?.length || 0);
     
     try {
-      const payload = { imageBase64, latitude, longitude };
-      console.log('🚀 STEP 5.6: Payload prepared:', { imageSize: imageBase64?.length, latitude, longitude });
-      console.log('🚀🚀🚀 STEP 5.7: INVOKING supabase.functions.invoke("identify-cat") NOW');
-      console.log('🚀🚀🚀 IDENTIFY-CAT FLOW REACHED - CALLING EDGE FUNCTION');
+      const payload = { image: imageBase64, latitude, longitude };
+      console.log('📦 Payload prepared, invoking supabase.functions.invoke("identify-cat")');
       
       const { data, error } = await supabase.functions.invoke('identify-cat', {
         body: payload
       });
       
-      console.log('🚀 STEP 5.8: supabase.functions.invoke returned');
+      console.log('✅ Function invoke completed');
+      console.log('📥 Response data:', data);
+      console.log('❌ Response error:', error);
 
       if (error) {
-        console.error('=== SUPABASE FUNCTION ERROR ===');
-        console.error('Error object:', error);
-        console.error('Error message:', error.message);
-        console.error('Error details:', JSON.stringify(error, null, 2));
+        console.error('🔴 SUPABASE FUNCTION ERROR:', error);
         throw error;
       }
 
-      console.log('=== FUNCTION RESPONSE SUCCESS ===');
-      console.log('Response data:', data);
-      
+      console.log('✨ Returning identification result:', data);
       return data as CatIdentificationResult;
     } catch (error) {
-      console.error('=== NETWORK OR INVOKE ERROR ===');
-      console.error('Error type:', error?.constructor?.name);
-      console.error('Error message:', error?.message || error);
-      console.error('Full error:', error);
-      
+      console.error('💥 EXCEPTION IN identifyCat:', error);
       toast({
         title: "Error Identifying Cat",
         description: error?.message || "Failed to connect to cat identification service",
@@ -168,7 +156,8 @@ export const useCats = () => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      // First create the cat record
+      console.log('🐱 Creating new cat:', name);
+      
       const { data: catData, error: catError } = await supabase
         .from('cats')
         .insert({
@@ -181,20 +170,20 @@ export const useCats = () => {
 
       if (catError) throw catError;
 
-      // Upload the image
+      console.log('✅ Cat record created:', catData.id);
+
       const imageUrl = await uploadCatImage(imageFile, catData.id);
       
       if (imageUrl) {
-        // Update cat with image URL
         const { error: updateError } = await supabase
           .from('cats')
           .update({ image_url: imageUrl })
           .eq('id', catData.id);
 
         if (updateError) throw updateError;
+        console.log('✅ Image uploaded and linked');
       }
 
-      // Create the sighting
       const { error: sightingError } = await supabase
         .from('cat_sightings')
         .insert({
@@ -206,7 +195,8 @@ export const useCats = () => {
 
       if (sightingError) throw sightingError;
 
-      // Refresh data
+      console.log('✅ Sighting recorded');
+
       fetchCats();
       fetchCatSightings();
 
@@ -218,7 +208,7 @@ export const useCats = () => {
 
       return catData;
     } catch (error) {
-      console.error('Error creating cat:', error);
+      console.error('❌ Error creating cat:', error);
       toast({
         title: "Error",
         description: "Failed to create cat profile",
