@@ -2,7 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
-const BUILD_TIMESTAMP = "2025-01-21T19:55:00Z";
+const BUILD_TIMESTAMP = "2025-01-26T00:00:00Z";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,8 +19,18 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, latitude, longitude } = await req.json();
-    console.log('Request received with image size:', imageBase64?.length || 0, 'bytes');
+    console.log('=== IDENTIFY-CAT FUNCTION STARTING ===');
+    console.log('Build timestamp:', BUILD_TIMESTAMP);
+    
+    const requestBody = await req.json();
+    console.log('Request body keys:', Object.keys(requestBody));
+    console.log('Has imageBase64:', !!requestBody.imageBase64);
+    console.log('Has latitude:', !!requestBody.latitude);
+    console.log('Has longitude:', !!requestBody.longitude);
+    
+    const { imageBase64, latitude, longitude } = requestBody;
+    console.log('Image base64 length:', imageBase64?.length || 0, 'characters');
+    console.log('Location:', { latitude, longitude });
     
     // STEP 1: Comprehensive environment diagnostics
     console.log('=== ENVIRONMENT DIAGNOSTICS ===');
@@ -54,7 +64,17 @@ serve(async (req) => {
     if (!openAIApiKey) {
       console.error('✗ NO API KEY FOUND under any tested names:', possibleKeyNames);
       console.error('Available env keys:', allEnvKeys);
-      throw new Error('OpenAI API key not configured - checked all variants');
+      return new Response(JSON.stringify({
+        error: 'openai_api_key_not_configured',
+        details: 'OpenAI API key not configured in Supabase secrets',
+        features: null,
+        existing_cat: null,
+        match_score: 0,
+        is_likely_same_cat: false
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -224,7 +244,8 @@ serve(async (req) => {
     console.error('Error stack:', error.stack);
     
     return new Response(JSON.stringify({ 
-      error: error.message || 'An unexpected error occurred',
+      error: 'function_error',
+      details: error.message || 'An unexpected error occurred',
       features: null,
       existing_cat: null,
       match_score: 0,
