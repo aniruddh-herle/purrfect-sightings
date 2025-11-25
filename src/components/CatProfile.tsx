@@ -70,41 +70,55 @@ export const CatProfile = ({ onSave, onCancel, location }: CatProfileProps) => {
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('🔵 STEP 1: handleImageUpload triggered');
     const file = event.target.files?.[0];
+    console.log('🔵 STEP 1.1: File selected:', file?.name, file?.size, 'bytes');
+    
     if (file) {
+      console.log('🔵 STEP 1.2: Setting cat image state');
       setCatImage(file);
       const reader = new FileReader();
       reader.onload = (e) => {
+        console.log('🔵 STEP 1.3: FileReader for preview completed');
         setCatImagePreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
       
+      console.log('🔵 STEP 1.4: Calling analyzeImage');
       // Analyze the image with AI
       await analyzeImage(file);
+      console.log('🔵 STEP 1.5: analyzeImage completed');
+    } else {
+      console.log('🔴 STEP 1 FAILED: No file selected');
     }
   };
 
   const analyzeImage = async (file: File) => {
-    console.log('=== STARTING CAT IMAGE ANALYSIS ===');
-    console.log('File name:', file.name);
-    console.log('File size:', file.size, 'bytes');
-    console.log('File type:', file.type);
+    console.log('🟢 STEP 2: analyzeImage function STARTED');
+    console.log('🟢 STEP 2.1: File name:', file.name);
+    console.log('🟢 STEP 2.2: File size:', file.size, 'bytes');
+    console.log('🟢 STEP 2.3: File type:', file.type);
     
     setIsAnalyzing(true);
     setAiResult(null);
     
     try {
+      console.log('🟢 STEP 2.4: Creating FileReader for base64 conversion');
       // Convert file to base64
       const reader = new FileReader();
       reader.onload = async (e) => {
+        console.log('🟡 STEP 3: FileReader.onload triggered - image ready');
         try {
           const base64 = e.target?.result as string;
+          console.log('🟡 STEP 3.1: Base64 string received, length:', base64?.length || 0);
+          
           const base64Data = base64.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+          console.log('🟡 STEP 3.2: Base64 data extracted (without prefix), length:', base64Data?.length || 0);
+          console.log('🟡 STEP 3.3: Location:', location);
           
-          console.log('Image converted to base64, length:', base64Data?.length || 0);
-          console.log('Calling identifyCat with location:', location);
-          
+          console.log('🔴 STEP 4: CALLING identifyCat NOW');
           const result = await identifyCat(base64Data, location.lat, location.lng);
+          console.log('🔴 STEP 4.1: identifyCat returned');
           
           console.log('=== RECEIVED AI RESULT ===');
           console.log('Result:', result);
@@ -146,7 +160,7 @@ export const CatProfile = ({ onSave, onCancel, location }: CatProfileProps) => {
       };
       
       reader.onerror = (error) => {
-        console.error('FileReader error:', error);
+        console.error('🔴 STEP 2.6: FileReader ERROR:', error);
         toast({
           title: "File Read Error",
           description: "Failed to read image file",
@@ -155,7 +169,9 @@ export const CatProfile = ({ onSave, onCancel, location }: CatProfileProps) => {
         setIsAnalyzing(false);
       };
       
+      console.log('🟢 STEP 2.5: Starting FileReader.readAsDataURL');
       reader.readAsDataURL(file);
+      console.log('🟢 STEP 2.6: FileReader.readAsDataURL called (async operation started)');
     } catch (error) {
       console.error('=== ERROR IN ANALYZE IMAGE ===');
       console.error('Error:', error);

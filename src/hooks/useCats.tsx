@@ -91,17 +91,24 @@ export const useCats = () => {
   };
 
   const identifyCat = async (imageBase64: string, latitude: number, longitude: number): Promise<CatIdentificationResult | null> => {
-    console.log('=== CALLING identify-cat EDGE FUNCTION ===');
-    console.log('Image base64 size:', imageBase64?.length || 0, 'characters');
-    console.log('Location:', { latitude, longitude });
+    console.log('🚀 STEP 5: identifyCat function ENTERED');
+    console.log('🚀 STEP 5.1: Image base64 size:', imageBase64?.length || 0, 'characters');
+    console.log('🚀 STEP 5.2: Latitude:', latitude);
+    console.log('🚀 STEP 5.3: Longitude:', longitude);
+    console.log('🚀 STEP 5.4: Supabase client exists:', !!supabase);
+    console.log('🚀 STEP 5.5: Supabase.functions exists:', !!supabase.functions);
     
     try {
       const payload = { imageBase64, latitude, longitude };
-      console.log('Payload prepared, invoking function...');
+      console.log('🚀 STEP 5.6: Payload prepared:', { imageSize: imageBase64?.length, latitude, longitude });
+      console.log('🚀🚀🚀 STEP 5.7: INVOKING supabase.functions.invoke("identify-cat") NOW');
+      console.log('🚀🚀🚀 IDENTIFY-CAT FLOW REACHED - CALLING EDGE FUNCTION');
       
       const { data, error } = await supabase.functions.invoke('identify-cat', {
         body: payload
       });
+      
+      console.log('🚀 STEP 5.8: supabase.functions.invoke returned');
 
       if (error) {
         console.error('=== SUPABASE FUNCTION ERROR ===');
