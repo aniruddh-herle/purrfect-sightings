@@ -37,6 +37,8 @@ export interface CatIdentificationResult {
   is_likely_same_cat?: boolean;
   match_score?: number;
   features?: CatFeatures;
+  error?: string;
+  details?: string;
 }
 
 export const useCats = () => {
@@ -89,18 +91,39 @@ export const useCats = () => {
   };
 
   const identifyCat = async (imageBase64: string, latitude: number, longitude: number): Promise<CatIdentificationResult | null> => {
+    console.log('=== CALLING identify-cat EDGE FUNCTION ===');
+    console.log('Image base64 size:', imageBase64?.length || 0, 'characters');
+    console.log('Location:', { latitude, longitude });
+    
     try {
+      const payload = { imageBase64, latitude, longitude };
+      console.log('Payload prepared, invoking function...');
+      
       const { data, error } = await supabase.functions.invoke('identify-cat', {
-        body: { imageBase64, latitude, longitude }
+        body: payload
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('=== SUPABASE FUNCTION ERROR ===');
+        console.error('Error object:', error);
+        console.error('Error message:', error.message);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+
+      console.log('=== FUNCTION RESPONSE SUCCESS ===');
+      console.log('Response data:', data);
+      
       return data as CatIdentificationResult;
     } catch (error) {
-      console.error('Error identifying cat:', error);
+      console.error('=== NETWORK OR INVOKE ERROR ===');
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error?.message || error);
+      console.error('Full error:', error);
+      
       toast({
-        title: "Error",
-        description: "Failed to identify cat",
+        title: "Error Identifying Cat",
+        description: error?.message || "Failed to connect to cat identification service",
         variant: "destructive",
       });
       return null;

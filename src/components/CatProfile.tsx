@@ -85,6 +85,11 @@ export const CatProfile = ({ onSave, onCancel, location }: CatProfileProps) => {
   };
 
   const analyzeImage = async (file: File) => {
+    console.log('=== STARTING CAT IMAGE ANALYSIS ===');
+    console.log('File name:', file.name);
+    console.log('File size:', file.size, 'bytes');
+    console.log('File type:', file.type);
+    
     setIsAnalyzing(true);
     setAiResult(null);
     
@@ -92,31 +97,74 @@ export const CatProfile = ({ onSave, onCancel, location }: CatProfileProps) => {
       // Convert file to base64
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const base64 = e.target?.result as string;
-        const base64Data = base64.split(',')[1]; // Remove data:image/jpeg;base64, prefix
-        
-        const result = await identifyCat(base64Data, location.lat, location.lng);
-        setAiResult(result);
-        
-        if (result?.existing_cat && result?.is_likely_same_cat) {
-          setShowExistingCat(true);
-          setCatName(result.existing_cat.name);
+        try {
+          const base64 = e.target?.result as string;
+          const base64Data = base64.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+          
+          console.log('Image converted to base64, length:', base64Data?.length || 0);
+          console.log('Calling identifyCat with location:', location);
+          
+          const result = await identifyCat(base64Data, location.lat, location.lng);
+          
+          console.log('=== RECEIVED AI RESULT ===');
+          console.log('Result:', result);
+          
+          setAiResult(result);
+          
+          if (result?.existing_cat && result?.is_likely_same_cat) {
+            console.log('Existing cat match found:', result.existing_cat.name, 'Score:', result.match_score);
+            setShowExistingCat(true);
+            setCatName(result.existing_cat.name);
+            toast({
+              title: "Cat identified! 🎯",
+              description: `This looks like ${result.existing_cat.name} (${Math.round(result.match_score || 0)}% match)`,
+            });
+          } else if (result?.features) {
+            console.log('New cat detected with features:', result.features);
+            toast({
+              title: "New cat detected! 🆕",
+              description: "This appears to be a new cat. Please give it a name.",
+            });
+          } else if (result?.error) {
+            console.error('AI returned error:', result.error, result.details);
+            toast({
+              title: "Analysis Error",
+              description: result.details || "Failed to analyze cat image",
+              variant: "destructive",
+            });
+          }
+        } catch (innerError) {
+          console.error('Error in reader.onload handler:', innerError);
           toast({
-            title: "Cat identified! 🎯",
-            description: `This looks like ${result.existing_cat.name} (${Math.round(result.match_score)}% match)`,
+            title: "Analysis Error",
+            description: "Failed to process image data",
+            variant: "destructive",
           });
-        } else if (result?.features) {
-          toast({
-            title: "New cat detected! 🆕",
-            description: "This appears to be a new cat. Please give it a name.",
-          });
+        } finally {
+          setIsAnalyzing(false);
         }
       };
+      
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        toast({
+          title: "File Read Error",
+          description: "Failed to read image file",
+          variant: "destructive",
+        });
+        setIsAnalyzing(false);
+      };
+      
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Error analyzing image:', error);
-    } finally {
+      console.error('=== ERROR IN ANALYZE IMAGE ===');
+      console.error('Error:', error);
       setIsAnalyzing(false);
+      toast({
+        title: "Analysis Error",
+        description: "Failed to analyze cat image",
+        variant: "destructive",
+      });
     }
   };
 

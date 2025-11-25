@@ -16,6 +16,18 @@ const Index = () => {
   const [newCatLocation, setNewCatLocation] = useState<{lat: number, lng: number} | null>(null);
   const [showMap, setShowMap] = useState(false);
 
+  const handleStartSpotting = () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to start spotting cats",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowMap(true);
+  };
+
   const handleAddCat = (lat: number, lng: number) => {
     setNewCatLocation({ lat, lng });
     setShowCatProfile(true);
@@ -100,7 +112,7 @@ const Index = () => {
             <Button 
               variant="hero" 
               size="xl"
-              onClick={() => setShowMap(true)}
+              onClick={handleStartSpotting}
               className="text-lg"
             >
               <Camera className="w-6 h-6 mr-2" />
@@ -206,7 +218,7 @@ const Index = () => {
           <Button 
             variant="hero" 
             size="xl"
-            onClick={() => setShowMap(true)}
+            onClick={handleStartSpotting}
             className="text-lg"
           >
             <Heart className="w-6 h-6 mr-2" />
